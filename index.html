@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+  <title>Smart Conveyor Dashboard</title>
+
+  <!-- FONT -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- MQTT -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:'Poppins',sans-serif;
+    }
+
+    body{
+      background:
+      radial-gradient(circle at top right,#1e3a8a 0%,transparent 25%),
+      radial-gradient(circle at bottom left,#0891b2 0%,transparent 25%),
+      #0f172a;
+
+      color:white;
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    .container{
+      width:100%;
+      max-width:1400px;
+      margin:auto;
+      padding:20px;
+    }
+
+    /* =========================
+        HEADER
+    ========================== */
+
+    .header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:25px;
+      flex-wrap:wrap;
+      gap:20px;
+    }
+
+    .title h1{
+      font-size:2rem;
+      font-weight:700;
+    }
+
+    .title p{
+      color:#94a3b8;
+      margin-top:5px;
+    }
+
+    .status{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      background:rgba(30,41,59,0.8);
+      padding:12px 18px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.08);
+      backdrop-filter:blur(10px);
+    }
+
+    .dot{
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      background:#ef4444;
+      box-shadow:0 0 10px #ef4444;
+      transition:0.3s;
+    }
+
+    .dot.connected{
+      background:#22c55e;
+      box-shadow:0 0 12px #22c55e;
+    }
+
+    /* =========================
+        GRID
+    ========================== */
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+      gap:20px;
+      margin-bottom:25px;
+    }
+
+    /* =========================
+        CARD
+    ========================== */
+
+    .card{
+      background:rgba(30,41,59,0.75);
+      backdrop-filter:blur(14px);
+      border-radius:24px;
+      padding:24px;
+      border:1px solid rgba(255,255,255,0.08);
+      transition:0.3s;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .card:hover{
+      transform:translateY(-5px);
+      border-color:#38bdf8;
+      box-shadow:0 0 25px rgba(56,189,248,0.15);
+    }
+
+    .card::before{
+      content:"";
+      position:absolute;
+      top:0;
+      left:0;
+      width:100%;
+      height:5px;
+      background:linear-gradient(90deg,#06b6d4,#3b82f6);
+    }
+
+    .card-title{
+      font-size:1rem;
+      color:#94a3b8;
+      margin-bottom:12px;
+      font-weight:500;
+    }
+
+    .card-value{
+      font-size:3.5rem;
+      font-weight:700;
+      line-height:1;
+    }
+
+    .card-sub{
+      margin-top:10px;
+      color:#94a3b8;
+      font-size:0.95rem;
+    }
+
+    /* =========================
+        BIG CARD
+    ========================== */
+
+    .big-card{
+      background:rgba(30,41,59,0.75);
+      border-radius:24px;
+      padding:24px;
+      border:1px solid rgba(255,255,255,0.08);
+      backdrop-filter:blur(14px);
+      margin-bottom:25px;
+    }
+
+    .big-title{
+      font-size:1.2rem;
+      margin-bottom:20px;
+      font-weight:600;
+    }
+
+    /* =========================
+        ACTIVITY LOG
+    ========================== */
+
+    .logs{
+      max-height:350px;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .logs::-webkit-scrollbar{
+      width:6px;
+    }
+
+    .logs::-webkit-scrollbar-thumb{
+      background:#334155;
+      border-radius:10px;
+    }
+
+    .log-item{
+      background:#0f172a;
+      padding:14px;
+      border-radius:14px;
+      border-left:4px solid #38bdf8;
+      animation:fadeIn 0.3s ease;
+    }
+
+    .log-time{
+      font-size:0.8rem;
+      color:#94a3b8;
+      margin-bottom:5px;
+    }
+
+    @keyframes fadeIn{
+      from{
+        opacity:0;
+        transform:translateY(10px);
+      }
+      to{
+        opacity:1;
+        transform:translateY(0);
+      }
+    }
+
+    /* =========================
+        SYSTEM STATUS
+    ========================== */
+
+    .system-running{
+      color:#22c55e;
+      font-weight:700;
+    }
+
+    /* =========================
+        MOBILE
+    ========================== */
+
+    @media(max-width:768px){
+
+      .header{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+
+      .title h1{
+        font-size:1.6rem;
+      }
+
+      .card-value{
+        font-size:2.6rem;
+      }
+
+      .container{
+        padding:15px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- =========================
+          HEADER
+    ========================== -->
+
+    <div class="header">
+
+      <div class="title">
+        <h1>Smart Conveyor Dashboard</h1>
+        <p>IoT Monitoring System • MQTT Protocol</p>
+      </div>
+
+      <div class="status">
+
+        <div class="dot" id="statusDot"></div>
+
+        <span id="statusText">
+          Disconnected
+        </span>
+
+      </div>
+
+    </div>
+
+    <!-- =========================
+          GRID
+    ========================== -->
+
+    <div class="grid">
+
+      <!-- TOTAL BARANG -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Total Barang
+        </div>
+
+        <div class="card-value" id="totalBarang">
+          0
+        </div>
+
+        <div class="card-sub">
+          Total objek terdeteksi conveyor
+        </div>
+
+      </div>
+
+      <!-- MQTT STATUS -->
+
+      <div class="card">
+
+        <div class="card-title">
+          MQTT Status
+        </div>
+
+        <div class="card-value" id="mqttStatus" style="font-size:2rem;">
+          OFFLINE
+        </div>
+
+        <div class="card-sub">
+          Status koneksi broker MQTT
+        </div>
+
+      </div>
+
+      <!-- SYSTEM -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Conveyor System
+        </div>
+
+        <div class="card-value system-running" style="font-size:2rem;">
+          RUNNING
+        </div>
+
+        <div class="card-sub">
+          Monitoring realtime aktif
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =========================
+          LOG
+    ========================== -->
+
+    <div class="big-card">
+
+      <div class="big-title">
+        Realtime Activity
+      </div>
+
+      <div class="logs" id="logs">
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+
+    // =========================================
+    // MQTT CONFIG
+    // =========================================
+
+    const options = {
+
+      username: "USERNAME_MQTT",
+      password: "PASSWORD_MQTT",
+
+      reconnectPeriod: 2000,
+      connectTimeout: 4000,
+
+    };
+
+    const client = mqtt.connect(
+      "wss://589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud:8884/mqtt",
+      options
+    );
+
+    // =========================================
+    // ELEMENT
+    // =========================================
+
+    const totalBarang = document.getElementById("totalBarang");
+
+    const mqttStatus = document.getElementById("mqttStatus");
+
+    const statusDot = document.getElementById("statusDot");
+
+    const statusText = document.getElementById("statusText");
+
+    const logs = document.getElementById("logs");
+
+    // =========================================
+    // CONNECT
+    // =========================================
+
+    client.on("connect", () => {
+
+      console.log("MQTT Connected");
+
+      // status UI
+      statusDot.classList.add("connected");
+
+      statusText.innerText = "Connected";
+
+      mqttStatus.innerText = "ONLINE";
+
+      mqttStatus.style.color = "#22c55e";
+
+      // subscribe topic
+      client.subscribe("smartconveyor/totalbarang");
+
+      addLog("MQTT Connected");
+
+    });
+
+    // =========================================
+    // MESSAGE
+    // =========================================
+
+    client.on("message", (topic, message) => {
+
+      const value = message.toString();
+
+      console.log(topic, value);
+
+      // TOTAL BARANG
+      if(topic === "smartconveyor/totalbarang"){
+
+        totalBarang.innerText = value;
+
+        addLog(`Barang terdeteksi • Total = ${value}`);
+
+      }
+
+    });
+
+    // =========================================
+    // OFFLINE
+    // =========================================
+
+    client.on("offline", () => {
+
+      statusDot.classList.remove("connected");
+
+      statusText.innerText = "Disconnected";
+
+      mqttStatus.innerText = "OFFLINE";
+
+      mqttStatus.style.color = "#ef4444";
+
+      addLog("MQTT Disconnected");
+
+    });
+
+    // =========================================
+    // ERROR
+    // =========================================
+
+    client.on("error", (err) => {
+
+      console.error(err);
+
+      addLog("MQTT Error Connection");
+
+    });
+
+    // =========================================
+    // LOG FUNCTION
+    // =========================================
+
+    function addLog(text){
+
+      const item = document.createElement("div");
+
+      item.classList.add("log-item");
+
+      const time = new Date().toLocaleTimeString();
+
+      item.innerHTML = `
+        <div class="log-time">${time}</div>
+        <div>${text}</div>
+      `;
+
+      logs.prepend(item);
+
+    }
+
+  </script>
+
+</body>
+</html>
