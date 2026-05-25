@@ -28,29 +28,18 @@ WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
 // ======================================
-// SENSOR PIN
+// SENSOR PHOTOELECTRIC
 // ======================================
 
 const int Photoelectric = 27;
-const int InductiveSensor = 26;
-
-// ======================================
-// COUNTER
-// ======================================
-
-int totalBarang = 0;
-int totalLogam = 0;
-int totalNonLogam = 0;
-
-// ======================================
-// PHOTOELECTRIC STATE
-// ======================================
 
 bool lastState = HIGH;
 
+int totalBarang = 0;
+
 // debounce
 unsigned long lastTrigger = 0;
-const int debounceDelay = 300;
+const int debounceDelay = 200;
 
 // ======================================
 // FUNCTION DECLARATION
@@ -58,19 +47,15 @@ const int debounceDelay = 300;
 
 void connectWiFi();
 void connectMQTT();
-void ReadSensor();
-void publishMQTT();
+void ReadPhotoelectric();
 
 // ======================================
 
 void setup() {
 
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   pinMode(Photoelectric, INPUT_PULLUP);
-
-  // inductive NPN
-  pinMode(InductiveSensor, INPUT_PULLUP);
 
   // connect wifi
   connectWiFi();
@@ -78,7 +63,7 @@ void setup() {
   // SSL bypass
   espClient.setInsecure();
 
-  // MQTT
+  // MQTT setup
   client.setServer(mqtt_server, 8883);
 
   Serial.println("System Ready!");
@@ -88,6 +73,7 @@ void setup() {
 
 void loop() {
 
+  // reconnect mqtt
   if (!client.connected()) {
 
     connectMQTT();
@@ -95,11 +81,11 @@ void loop() {
 
   client.loop();
 
-  ReadSensor();
+  ReadPhotoelectric();
 }
 
 // ======================================
-// WIFI
+// WIFI CONNECT
 // ======================================
 
 void connectWiFi() {
@@ -115,11 +101,9 @@ void connectWiFi() {
   }
 
   Serial.println();
-
   Serial.println("WiFi Connected!");
 
   Serial.print("IP Address: ");
-
   Serial.println(WiFi.localIP());
 }
 
@@ -133,7 +117,7 @@ void connectMQTT() {
 
     Serial.print("Connecting MQTT...");
 
-    String clientID = "ESP32-";
+    String clientID = "ESP32Client-";
     clientID += String(random(0xffff), HEX);
 
     if (client.connect(
@@ -155,10 +139,10 @@ void connectMQTT() {
 }
 
 // ======================================
-// READ SENSOR
+// PHOTOELECTRIC SENSOR
 // ======================================
 
-void ReadSensor() {
+void ReadPhotoelectric() {
 
   bool currentState = digitalRead(Photoelectric);
 
@@ -172,74 +156,27 @@ void ReadSensor() {
 
       Serial.println("====================");
 
-      Serial.print("Barang Terdeteksi");
+      Serial.print("Barang Terdeteksi!");
+      Serial.print(" | Total: ");
 
-      // ==================================
-      // DELAY MENUJU INDUCTIVE
-      // ==================================
-
-      delay(500);
-
-      // ==================================
-      // DETEKSI LOGAM
-      // ==================================
-
-      bool metalDetected =
-      digitalRead(InductiveSensor) == LOW;
-
-      if (metalDetected) {
-
-        totalLogam++;
-
-        Serial.println(" -> LOGAM");
-
-      } else {
-
-        totalNonLogam++;
-
-        Serial.println(" -> NON LOGAM");
-      }
-
-      // tampil serial
-      Serial.print("Total Barang: ");
       Serial.println(totalBarang);
 
-      Serial.print("Logam: ");
-      Serial.println(totalLogam);
+      // ==================================
+      // MQTT PUBLISH
+      // ==================================
 
-      Serial.print("Non Logam: ");
-      Serial.println(totalNonLogam);
+      String payload = String(totalBarang);
 
-      // publish MQTT
-      publishMQTT();
+      client.publish(
+        "smartconveyor/totalbarang",
+        payload.c_str()
+      );
+
+      Serial.println("MQTT Published");
 
       lastTrigger = millis();
     }
   }
 
   lastState = currentState;
-}
-
-// ======================================
-// MQTT PUBLISH
-// ======================================
-
-void publishMQTT() {
-
-  client.publish(
-    "smartconveyor/totalbarang",
-    String(totalBarang).c_str()
-  );
-
-  client.publish(
-    "smartconveyor/logam",
-    String(totalLogam).c_str()
-  );
-
-  client.publish(
-    "smartconveyor/nonlogam",
-    String(totalNonLogam).c_str()
-  );
-
-  Serial.println("MQTT Published!");
 }

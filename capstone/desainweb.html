@@ -218,23 +218,12 @@
     }
 
     /* =========================
-        STATUS COLOR
+        SYSTEM STATUS
     ========================== */
 
-    .online{
+    .system-running{
       color:#22c55e;
-    }
-
-    .offline{
-      color:#ef4444;
-    }
-
-    .metal{
-      color:#38bdf8;
-    }
-
-    .nonmetal{
-      color:#f59e0b;
+      font-weight:700;
     }
 
     /* =========================
@@ -270,7 +259,9 @@
 
   <div class="container">
 
-    <!-- HEADER -->
+    <!-- =========================
+          HEADER
+    ========================== -->
 
     <div class="header">
 
@@ -291,7 +282,9 @@
 
     </div>
 
-    <!-- GRID -->
+    <!-- =========================
+          GRID
+    ========================== -->
 
     <div class="grid">
 
@@ -313,42 +306,6 @@
 
       </div>
 
-      <!-- LOGAM -->
-
-      <div class="card">
-
-        <div class="card-title">
-          Barang Logam
-        </div>
-
-        <div class="card-value metal" id="logam">
-          0
-        </div>
-
-        <div class="card-sub">
-          Total barang logam terdeteksi
-        </div>
-
-      </div>
-
-      <!-- NON LOGAM -->
-
-      <div class="card">
-
-        <div class="card-title">
-          Non Logam
-        </div>
-
-        <div class="card-value nonmetal" id="nonlogam">
-          0
-        </div>
-
-        <div class="card-sub">
-          Total barang non-logam
-        </div>
-
-      </div>
-
       <!-- MQTT STATUS -->
 
       <div class="card">
@@ -357,7 +314,7 @@
           MQTT Status
         </div>
 
-        <div class="card-value offline" id="mqttStatus" style="font-size:2rem;">
+        <div class="card-value" id="mqttStatus" style="font-size:2rem;">
           OFFLINE
         </div>
 
@@ -367,9 +324,29 @@
 
       </div>
 
+      <!-- SYSTEM -->
+
+      <div class="card">
+
+        <div class="card-title">
+          Conveyor System
+        </div>
+
+        <div class="card-value system-running" style="font-size:2rem;">
+          RUNNING
+        </div>
+
+        <div class="card-sub">
+          Monitoring realtime aktif
+        </div>
+
+      </div>
+
     </div>
 
-    <!-- LOG -->
+    <!-- =========================
+          LOG
+    ========================== -->
 
     <div class="big-card">
 
@@ -399,16 +376,7 @@
       reconnectPeriod: 2000,
       connectTimeout: 4000,
 
-      clean: true,
-
-      clientId:
-      "dashboard_" + Math.random().toString(16).substr(2,8)
-
     };
-
-    // =========================================
-    // MQTT CONNECT
-    // =========================================
 
     const client = mqtt.connect(
       "wss://589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud:8884/mqtt",
@@ -419,26 +387,15 @@
     // ELEMENT
     // =========================================
 
-    const totalBarang =
-    document.getElementById("totalBarang");
+    const totalBarang = document.getElementById("totalBarang");
 
-    const logam =
-    document.getElementById("logam");
+    const mqttStatus = document.getElementById("mqttStatus");
 
-    const nonlogam =
-    document.getElementById("nonlogam");
+    const statusDot = document.getElementById("statusDot");
 
-    const mqttStatus =
-    document.getElementById("mqttStatus");
+    const statusText = document.getElementById("statusText");
 
-    const statusDot =
-    document.getElementById("statusDot");
-
-    const statusText =
-    document.getElementById("statusText");
-
-    const logs =
-    document.getElementById("logs");
+    const logs = document.getElementById("logs");
 
     // =========================================
     // CONNECT
@@ -448,29 +405,24 @@
 
       console.log("MQTT Connected");
 
+      // status UI
       statusDot.classList.add("connected");
 
       statusText.innerText = "Connected";
 
       mqttStatus.innerText = "ONLINE";
 
-      mqttStatus.classList.remove("offline");
-
-      mqttStatus.classList.add("online");
+      mqttStatus.style.color = "#22c55e";
 
       // subscribe topic
       client.subscribe("smartconveyor/totalbarang");
-
-      client.subscribe("smartconveyor/logam");
-
-      client.subscribe("smartconveyor/nonlogam");
 
       addLog("MQTT Connected");
 
     });
 
     // =========================================
-    // MQTT MESSAGE
+    // MESSAGE
     // =========================================
 
     client.on("message", (topic, message) => {
@@ -484,31 +436,7 @@
 
         totalBarang.innerText = value;
 
-        addLog(
-          `Total Barang = ${value}`
-        );
-
-      }
-
-      // LOGAM
-      if(topic === "smartconveyor/logam"){
-
-        logam.innerText = value;
-
-        addLog(
-          `Logam Terdeteksi = ${value}`
-        );
-
-      }
-
-      // NON LOGAM
-      if(topic === "smartconveyor/nonlogam"){
-
-        nonlogam.innerText = value;
-
-        addLog(
-          `Non Logam = ${value}`
-        );
+        addLog(`Barang terdeteksi • Total = ${value}`);
 
       }
 
@@ -526,9 +454,7 @@
 
       mqttStatus.innerText = "OFFLINE";
 
-      mqttStatus.classList.remove("online");
-
-      mqttStatus.classList.add("offline");
+      mqttStatus.style.color = "#ef4444";
 
       addLog("MQTT Disconnected");
 
@@ -540,19 +466,9 @@
 
     client.on("error", (err) => {
 
-      console.error("MQTT ERROR:", err);
+      console.error(err);
 
-      addLog("MQTT Error: " + err.message);
-
-    });
-
-    // =========================================
-    // RECONNECT
-    // =========================================
-
-    client.on("reconnect", () => {
-
-      addLog("Reconnecting MQTT...");
+      addLog("MQTT Error Connection");
 
     });
 
@@ -566,8 +482,7 @@
 
       item.classList.add("log-item");
 
-      const time =
-      new Date().toLocaleTimeString();
+      const time = new Date().toLocaleTimeString();
 
       item.innerHTML = `
         <div class="log-time">${time}</div>
