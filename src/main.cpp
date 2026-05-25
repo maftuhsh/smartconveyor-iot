@@ -17,8 +17,11 @@ const char* password = "tetapsama";
 const char* mqtt_server =
 "589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud";
 
-const char* mqtt_user = "smartconveyor-iot";
-const char* mqtt_password = "Mesinelektro123";
+const char* mqtt_user =
+"smartconveyor-iot";
+
+const char* mqtt_password =
+"Mesinelektro123";
 
 // ======================================
 // MQTT CLIENT
@@ -43,22 +46,22 @@ int totalLogam = 0;
 int totalNonLogam = 0;
 
 // ======================================
-// PHOTOELECTRIC STATE
+// STATE
 // ======================================
 
-bool lastState = HIGH;
+bool lastPhotoState = HIGH;
 
 // debounce
 unsigned long lastTrigger = 0;
-const int debounceDelay = 300;
+const int debounceDelay = 500;
 
 // ======================================
-// FUNCTION DECLARATION
+// FUNCTION
 // ======================================
 
 void connectWiFi();
 void connectMQTT();
-void ReadSensor();
+void ReadConveyor();
 void publishMQTT();
 
 // ======================================
@@ -75,7 +78,7 @@ void setup() {
   // connect wifi
   connectWiFi();
 
-  // SSL bypass
+  // SSL insecure
   espClient.setInsecure();
 
   // MQTT
@@ -95,7 +98,7 @@ void loop() {
 
   client.loop();
 
-  ReadSensor();
+  ReadConveyor();
 }
 
 // ======================================
@@ -155,69 +158,91 @@ void connectMQTT() {
 }
 
 // ======================================
-// READ SENSOR
+// READ CONVEYOR
 // ======================================
 
-void ReadSensor() {
+void ReadConveyor() {
 
-  bool currentState = digitalRead(Photoelectric);
+  bool currentPhotoState =
+  digitalRead(Photoelectric);
 
   // HIGH -> LOW
-  if (lastState == HIGH && currentState == LOW) {
+  if (lastPhotoState == HIGH &&
+      currentPhotoState == LOW) {
 
     // debounce
-    if (millis() - lastTrigger > debounceDelay) {
+    if (millis() - lastTrigger >
+        debounceDelay) {
 
       totalBarang++;
 
       Serial.println("====================");
 
-      Serial.print("Barang Terdeteksi");
+      Serial.println("Barang Masuk");
 
-      // ==================================
-      // DELAY MENUJU INDUCTIVE
-      // ==================================
+      // ==============================
+      // TUNGGU BARANG KE INDUCTIVE
+      // ==============================
 
-      delay(500);
+      delay(400);
 
-      // ==================================
-      // DETEKSI LOGAM
-      // ==================================
+      // ==============================
+      // CEK LOGAM
+      // ==============================
 
-      bool metalDetected =
-      digitalRead(InductiveSensor) == LOW;
+      bool metalDetected = false;
 
-      if (metalDetected) {
+      // anti noise
+      for(int i=0; i<5; i++){
+
+        if(digitalRead(
+            InductiveSensor
+          ) == LOW){
+
+          metalDetected = true;
+        }
+
+        delay(10);
+      }
+
+      // ==============================
+      // KLASIFIKASI
+      // ==============================
+
+      if(metalDetected){
 
         totalLogam++;
 
-        Serial.println(" -> LOGAM");
+        Serial.println("LOGAM");
 
       } else {
 
         totalNonLogam++;
 
-        Serial.println(" -> NON LOGAM");
+        Serial.println("NON LOGAM");
       }
 
-      // tampil serial
-      Serial.print("Total Barang: ");
+      // ==============================
+      // SERIAL MONITOR
+      // ==============================
+
+      Serial.print("Total Barang : ");
       Serial.println(totalBarang);
 
-      Serial.print("Logam: ");
+      Serial.print("Logam        : ");
       Serial.println(totalLogam);
 
-      Serial.print("Non Logam: ");
+      Serial.print("Non Logam    : ");
       Serial.println(totalNonLogam);
 
-      // publish MQTT
+      // publish mqtt
       publishMQTT();
 
       lastTrigger = millis();
     }
   }
 
-  lastState = currentState;
+  lastPhotoState = currentPhotoState;
 }
 
 // ======================================
@@ -226,19 +251,30 @@ void ReadSensor() {
 
 void publishMQTT() {
 
+  char totalStr[10];
+  char logamStr[10];
+  char nonlogamStr[10];
+
+  sprintf(totalStr, "%d", totalBarang);
+
+  sprintf(logamStr, "%d", totalLogam);
+
+  sprintf(nonlogamStr, "%d",
+          totalNonLogam);
+
   client.publish(
     "smartconveyor/totalbarang",
-    String(totalBarang).c_str()
+    totalStr
   );
 
   client.publish(
     "smartconveyor/logam",
-    String(totalLogam).c_str()
+    logamStr
   );
 
   client.publish(
     "smartconveyor/nonlogam",
-    String(totalNonLogam).c_str()
+    nonlogamStr
   );
 
   Serial.println("MQTT Published!");
