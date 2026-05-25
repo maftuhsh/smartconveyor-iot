@@ -56,7 +56,7 @@ unsigned long lastTrigger = 0;
 const int debounceDelay = 500;
 
 // ======================================
-// FUNCTION
+// FUNCTION DECLARATION
 // ======================================
 
 void connectWiFi();
@@ -68,29 +68,45 @@ void publishMQTT();
 
 void setup() {
 
-  Serial.begin(115200);
+  Serial.begin(9600);
+
+  // ==================================
+  // PIN MODE
+  // ==================================
 
   pinMode(Photoelectric, INPUT_PULLUP);
 
   // inductive NPN
   pinMode(InductiveSensor, INPUT_PULLUP);
 
-  // connect wifi
+  // ==================================
+  // WIFI
+  // ==================================
+
   connectWiFi();
 
-  // SSL insecure
+  // ==================================
+  // SSL BYPASS
+  // ==================================
+
   espClient.setInsecure();
 
+  // ==================================
   // MQTT
+  // ==================================
+
   client.setServer(mqtt_server, 8883);
 
-  Serial.println("System Ready!");
+  Serial.println("========================");
+  Serial.println("SMART CONVEYOR READY");
+  Serial.println("========================");
 }
 
 // ======================================
 
 void loop() {
 
+  // reconnect mqtt
   if (!client.connected()) {
 
     connectMQTT();
@@ -102,7 +118,7 @@ void loop() {
 }
 
 // ======================================
-// WIFI
+// WIFI CONNECT
 // ======================================
 
 void connectWiFi() {
@@ -136,7 +152,7 @@ void connectMQTT() {
 
     Serial.print("Connecting MQTT...");
 
-    String clientID = "ESP32-";
+    String clientID = "ESP32Client-";
     clientID += String(random(0xffff), HEX);
 
     if (client.connect(
@@ -158,7 +174,7 @@ void connectMQTT() {
 }
 
 // ======================================
-// READ CONVEYOR
+// MAIN CONVEYOR SYSTEM
 // ======================================
 
 void ReadConveyor() {
@@ -166,7 +182,10 @@ void ReadConveyor() {
   bool currentPhotoState =
   digitalRead(Photoelectric);
 
-  // HIGH -> LOW
+  // ==================================
+  // DETEKSI BARANG
+  // ==================================
+
   if (lastPhotoState == HIGH &&
       currentPhotoState == LOW) {
 
@@ -177,65 +196,84 @@ void ReadConveyor() {
       totalBarang++;
 
       Serial.println("====================");
+      Serial.println("BARANG TERDETEKSI");
 
-      Serial.println("Barang Masuk");
-
-      // ==============================
-      // TUNGGU BARANG KE INDUCTIVE
-      // ==============================
-
-      delay(400);
-
-      // ==============================
-      // CEK LOGAM
-      // ==============================
+      // ==================================
+      // DETEKSI LOGAM
+      // ==================================
 
       bool metalDetected = false;
 
-      // anti noise
-      for(int i=0; i<5; i++){
+      int detectCount = 0;
 
-        if(digitalRead(
-            InductiveSensor
-          ) == LOW){
+      unsigned long startTime =
+      millis();
 
-          metalDetected = true;
+      // monitoring inductive selama 800ms
+      while (millis() - startTime < 800) {
+
+        // LOW = logam terdeteksi
+        if (digitalRead(
+              InductiveSensor
+            ) == LOW) {
+
+          detectCount++;
         }
 
-        delay(10);
+        delay(5);
       }
 
-      // ==============================
-      // KLASIFIKASI
-      // ==============================
+      // ==================================
+      // VALIDASI LOGAM
+      // ==================================
 
-      if(metalDetected){
+      // harus LOW berkali-kali
+      // supaya noise tidak dianggap logam
+
+      if (detectCount > 20) {
+
+        metalDetected = true;
+      }
+
+      // ==================================
+      // HASIL KLASIFIKASI
+      // ==================================
+
+      if (metalDetected) {
 
         totalLogam++;
 
-        Serial.println("LOGAM");
+        Serial.println("STATUS : LOGAM");
 
       } else {
 
-        totalNonLogam++;
-
-        Serial.println("NON LOGAM");
+        Serial.println("STATUS : NON LOGAM");
       }
 
-      // ==============================
+      // ==================================
+      // HITUNG NON LOGAM
+      // ==================================
+
+      totalNonLogam =
+      totalBarang - totalLogam;
+
+      // ==================================
       // SERIAL MONITOR
-      // ==============================
+      // ==================================
 
       Serial.print("Total Barang : ");
       Serial.println(totalBarang);
 
-      Serial.print("Logam        : ");
+      Serial.print("Total Logam  : ");
       Serial.println(totalLogam);
 
       Serial.print("Non Logam    : ");
       Serial.println(totalNonLogam);
 
-      // publish mqtt
+      // ==================================
+      // MQTT PUBLISH
+      // ==================================
+
       publishMQTT();
 
       lastTrigger = millis();
@@ -255,23 +293,28 @@ void publishMQTT() {
   char logamStr[10];
   char nonlogamStr[10];
 
-  sprintf(totalStr, "%d", totalBarang);
+  sprintf(totalStr, "%d",
+          totalBarang);
 
-  sprintf(logamStr, "%d", totalLogam);
+  sprintf(logamStr, "%d",
+          totalLogam);
 
   sprintf(nonlogamStr, "%d",
           totalNonLogam);
 
+  // TOTAL BARANG
   client.publish(
     "smartconveyor/totalbarang",
     totalStr
   );
 
+  // LOGAM
   client.publish(
     "smartconveyor/logam",
     logamStr
   );
 
+  // NON LOGAM
   client.publish(
     "smartconveyor/nonlogam",
     nonlogamStr
