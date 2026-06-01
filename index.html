@@ -3,12 +3,13 @@
 <head>
 
   <meta charset="UTF-8" />
+
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0"/>
 
   <title>Smart Conveyor Dashboard</title>
 
-  <!-- FONT -->
+  <!-- GOOGLE FONT -->
   <link rel="preconnect"
         href="https://fonts.googleapis.com">
 
@@ -43,7 +44,9 @@
       #0f172a;
 
       color:white;
+
       min-height:100vh;
+
       overflow-x:hidden;
     }
 
@@ -53,22 +56,26 @@
       max-width:1400px;
 
       margin:auto;
+
       padding:20px;
     }
 
-    /* =================================
+    /* =========================
         HEADER
-    ================================= */
+    ========================= */
 
     .header{
 
       display:flex;
+
       justify-content:space-between;
+
       align-items:center;
 
       margin-bottom:25px;
 
       flex-wrap:wrap;
+
       gap:20px;
     }
 
@@ -87,7 +94,9 @@
     .status{
 
       display:flex;
+
       align-items:center;
+
       gap:10px;
 
       background:rgba(30,41,59,0.8);
@@ -96,8 +105,7 @@
 
       border-radius:14px;
 
-      border:1px solid
-      rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.08);
 
       backdrop-filter:blur(10px);
     }
@@ -123,9 +131,9 @@
       box-shadow:0 0 12px #22c55e;
     }
 
-    /* =================================
+    /* =========================
         GRID
-    ================================= */
+    ========================= */
 
     .grid{
 
@@ -139,14 +147,13 @@
       margin-bottom:25px;
     }
 
-    /* =================================
+    /* =========================
         CARD
-    ================================= */
+    ========================= */
 
     .card{
 
-      background:
-      rgba(30,41,59,0.75);
+      background:rgba(30,41,59,0.75);
 
       backdrop-filter:blur(14px);
 
@@ -154,8 +161,7 @@
 
       padding:24px;
 
-      border:1px solid
-      rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.08);
 
       transition:0.3s;
 
@@ -223,40 +229,35 @@
       font-size:0.95rem;
     }
 
-    /* =================================
+    /* =========================
         COLORS
-    ================================= */
+    ========================= */
 
     .green{
-
       color:#22c55e;
     }
 
     .blue{
-
       color:#38bdf8;
     }
 
     .orange{
-
       color:#f59e0b;
     }
 
-    /* =================================
-        LOG CARD
-    ================================= */
+    /* =========================
+        BIG CARD
+    ========================= */
 
     .big-card{
 
-      background:
-      rgba(30,41,59,0.75);
+      background:rgba(30,41,59,0.75);
 
       border-radius:24px;
 
       padding:24px;
 
-      border:1px solid
-      rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.08);
 
       backdrop-filter:blur(14px);
     }
@@ -270,6 +271,10 @@
       font-weight:600;
     }
 
+    /* =========================
+        LOG
+    ========================= */
+
     .logs{
 
       max-height:350px;
@@ -277,9 +282,21 @@
       overflow-y:auto;
 
       display:flex;
+
       flex-direction:column;
 
       gap:12px;
+    }
+
+    .logs::-webkit-scrollbar{
+      width:6px;
+    }
+
+    .logs::-webkit-scrollbar-thumb{
+
+      background:#334155;
+
+      border-radius:10px;
     }
 
     .log-item{
@@ -319,15 +336,16 @@
       }
     }
 
-    /* =================================
+    /* =========================
         MOBILE
-    ================================= */
+    ========================= */
 
     @media(max-width:768px){
 
       .header{
 
         flex-direction:column;
+
         align-items:flex-start;
       }
 
@@ -345,7 +363,6 @@
 
         padding:15px;
       }
-
     }
 
   </style>
@@ -358,7 +375,7 @@
 
     <!-- =========================
           HEADER
-    ========================== -->
+    ========================= -->
 
     <div class="header">
 
@@ -389,7 +406,7 @@
 
     <!-- =========================
           GRID
-    ========================== -->
+    ========================= -->
 
     <div class="grid">
 
@@ -409,7 +426,7 @@
         </div>
 
         <div class="card-sub">
-          Total barang masuk conveyor
+          Total barang conveyor
         </div>
 
       </div>
@@ -456,7 +473,7 @@
 
       </div>
 
-      <!-- MQTT STATUS -->
+      <!-- MQTT -->
 
       <div class="card">
 
@@ -466,15 +483,14 @@
 
         <div class="card-value"
              id="mqttStatus"
-             style="font-size:2rem;
-                    color:#ef4444;">
+             style="font-size:2rem;color:#ef4444;">
 
           OFFLINE
 
         </div>
 
         <div class="card-sub">
-          Status koneksi broker
+          Status broker MQTT
         </div>
 
       </div>
@@ -482,8 +498,8 @@
     </div>
 
     <!-- =========================
-          LOG
-    ========================== -->
+          LOG ACTIVITY
+    ========================= -->
 
     <div class="big-card">
 
@@ -572,6 +588,14 @@
     "logs");
 
     // =====================================
+    // LAST VALUE
+    // =====================================
+
+    let lastTotal = -1;
+    let lastLogam = -1;
+    let lastNonLogam = -1;
+
+    // =====================================
     // CONNECT
     // =====================================
 
@@ -579,8 +603,6 @@
 
       console.log(
       "MQTT Connected");
-
-      // STATUS UI
 
       statusDot.classList.add(
       "connected");
@@ -594,7 +616,9 @@
       mqttStatus.style.color =
       "#22c55e";
 
-      // SUBSCRIBE MQTT
+      // =============================
+      // SUBSCRIBE
+      // =============================
 
       client.subscribe(
       "smartconveyor/totalbarang");
@@ -611,7 +635,7 @@
     });
 
     // =====================================
-    // MESSAGE MQTT
+    // MQTT MESSAGE
     // =====================================
 
     client.on(
@@ -619,59 +643,74 @@
     (topic, message) => {
 
       const value =
-      message.toString();
+      parseInt(message.toString());
 
       console.log(
       topic,
       value
       );
 
-      // ===============================
+      // =============================
       // TOTAL BARANG
-      // ===============================
+      // =============================
 
       if(
       topic ===
       "smartconveyor/totalbarang"
       ){
 
-        totalBarang.innerText =
-        value;
+        if(value !== lastTotal){
 
-        addLog(
-        `Total Barang = ${value}`);
+          totalBarang.innerText =
+          value;
+
+          addLog(
+          `Total Barang = ${value}`);
+
+          lastTotal = value;
+        }
       }
 
-      // ===============================
+      // =============================
       // LOGAM
-      // ===============================
+      // =============================
 
       if(
       topic ===
       "smartconveyor/logam"
       ){
 
-        logam.innerText =
-        value;
+        if(value !== lastLogam){
 
-        addLog(
-        `Logam = ${value}`);
+          logam.innerText =
+          value;
+
+          addLog(
+          `Barang Logam = ${value}`);
+
+          lastLogam = value;
+        }
       }
 
-      // ===============================
+      // =============================
       // NON LOGAM
-      // ===============================
+      // =============================
 
       if(
       topic ===
       "smartconveyor/nonlogam"
       ){
 
-        nonlogam.innerText =
-        value;
+        if(value !== lastNonLogam){
 
-        addLog(
-        `Non Logam = ${value}`);
+          nonlogam.innerText =
+          value;
+
+          addLog(
+          `Non Logam = ${value}`);
+
+          lastNonLogam = value;
+        }
       }
 
     });
@@ -719,7 +758,7 @@
     client.on("reconnect", () => {
 
       addLog(
-      "Reconnecting MQTT...");
+      "Reconnect MQTT...");
 
     });
 
@@ -740,14 +779,25 @@
       .toLocaleTimeString();
 
       item.innerHTML = `
+
         <div class="log-time">
           ${time}
         </div>
 
-        <div>${text}</div>
+        <div>
+          ${text}
+        </div>
+
       `;
 
       logs.prepend(item);
+
+      // maksimal 30 log
+      if(logs.children.length > 30){
+
+        logs.removeChild(
+        logs.lastChild);
+      }
 
     }
 
