@@ -61,7 +61,14 @@
     let lastEventTime = 0; 
     
     const ctx = document.getElementById('myChart').getContext('2d');
-    const chart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Logam', 'Non Logam'], datasets: [{ data: [1, 1], backgroundColor: ['#22c55e', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+    const chart = new Chart(ctx, { 
+      type: 'doughnut', 
+      data: { 
+        labels: ['Logam', 'Non Logam'], 
+        datasets: [{ data: [null, null], backgroundColor: ['#22c55e', '#f59e0b'] }] 
+      }, 
+      options: { responsive: true, maintainAspectRatio: false } 
+    });
 
     setInterval(() => {
       let d = Math.floor((Date.now() - startTime) / 1000);
@@ -85,15 +92,12 @@
       let v = parseInt(msg.toString());
       if (isNaN(v)) return;
 
-      // Update variabel internal
       if (topic === "smartconveyor/totalbarang") valTotal = v;
       else if (topic === "smartconveyor/logam") valLogam = v;
       else if (topic === "smartconveyor/nonlogam") valNonLogam = v;
 
-      // Update UI untuk Total Barang
       document.getElementById("totalBarang").innerText = valTotal;
 
-      // Update UI Last Detection dengan Debounce
       if (topic === "smartconveyor/logam" || topic === "smartconveyor/nonlogam") {
         if (Date.now() - lastEventTime > 800) {
           if (topic === "smartconveyor/logam") {
@@ -109,17 +113,18 @@
         }
       }
 
-      // Update Kalkulasi Persentase
       let pL = valTotal > 0 ? Math.round((valLogam / valTotal) * 100) : 0;
       let pNL = valTotal > 0 ? Math.round((valNonLogam / valTotal) * 100) : 0;
       document.getElementById("valLogam").innerText = `${valLogam} / ${pL}%`;
       document.getElementById("valNonLogam").innerText = `${valNonLogam} / ${pNL}%`;
       
-      // Update Chart
-      chart.data.datasets[0].data = [valLogam || 1, valNonLogam || 1];
+      // Update Chart dengan null untuk nilai 0 agar irisan tidak muncul
+      chart.data.datasets[0].data = [
+        valLogam > 0 ? valLogam : null, 
+        valNonLogam > 0 ? valNonLogam : null
+      ];
       chart.update();
 
-      // Sync ke Google Sheets (Debounce 1 detik agar tidak spam)
       clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
         new Image().src = `https://script.google.com/macros/s/${GOOGLE_SCRIPT_ID}/exec?barang=${valTotal}&logam=${valLogam}&nonlogam=${valNonLogam}`;
