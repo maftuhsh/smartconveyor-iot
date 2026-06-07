@@ -58,7 +58,7 @@
   <script>
     const GOOGLE_SCRIPT_ID = "AKfycbxcTcoVDLo5l3dCTiF5I_JVlrTYW_MNVSjfrcoZHNNKitjNtE-oBZ_miRs1KrXeb9Di";
     let valTotal = 0, valLogam = 0, valNonLogam = 0, startTime = Date.now(), syncTimeout = null;
-    let lastEventTime = 0; // Variabel untuk Debounce
+    let lastEventTime = 0; 
     
     const ctx = document.getElementById('myChart').getContext('2d');
     const chart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Logam', 'Non Logam'], datasets: [{ data: [1, 1], backgroundColor: ['#22c55e', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: false } });
@@ -85,34 +85,41 @@
       let v = parseInt(msg.toString());
       if (isNaN(v)) return;
 
-      // Logika Debounce: Abaikan pesan jika datang dalam waktu < 800ms dari pesan terakhir
-      if (Date.now() - lastEventTime < 800) return;
+      // Update variabel internal
+      if (topic === "smartconveyor/totalbarang") valTotal = v;
+      else if (topic === "smartconveyor/logam") valLogam = v;
+      else if (topic === "smartconveyor/nonlogam") valNonLogam = v;
 
-      if (topic === "smartconveyor/totalbarang") {
-        valTotal = v;
-        document.getElementById("totalBarang").innerText = v;
-      } else if (topic === "smartconveyor/logam") {
-        valLogam = v;
-        document.getElementById("lastDetect").innerText = "LOGAM";
-        document.getElementById("lastDetect").style.color = "#22c55e";
-        addLog("DETEKSI: LOGAM");
-        lastEventTime = Date.now();
-      } else if (topic === "smartconveyor/nonlogam") {
-        valNonLogam = v;
-        document.getElementById("lastDetect").innerText = "NON LOGAM";
-        document.getElementById("lastDetect").style.color = "#f59e0b";
-        addLog("DETEKSI: NON LOGAM");
-        lastEventTime = Date.now();
+      // Update UI untuk Total Barang
+      document.getElementById("totalBarang").innerText = valTotal;
+
+      // Update UI Last Detection dengan Debounce
+      if (topic === "smartconveyor/logam" || topic === "smartconveyor/nonlogam") {
+        if (Date.now() - lastEventTime > 800) {
+          if (topic === "smartconveyor/logam") {
+            document.getElementById("lastDetect").innerText = "LOGAM";
+            document.getElementById("lastDetect").style.color = "#22c55e";
+            addLog("DETEKSI: LOGAM");
+          } else {
+            document.getElementById("lastDetect").innerText = "NON LOGAM";
+            document.getElementById("lastDetect").style.color = "#f59e0b";
+            addLog("DETEKSI: NON LOGAM");
+          }
+          lastEventTime = Date.now();
+        }
       }
 
+      // Update Kalkulasi Persentase
       let pL = valTotal > 0 ? Math.round((valLogam / valTotal) * 100) : 0;
       let pNL = valTotal > 0 ? Math.round((valNonLogam / valTotal) * 100) : 0;
       document.getElementById("valLogam").innerText = `${valLogam} / ${pL}%`;
       document.getElementById("valNonLogam").innerText = `${valNonLogam} / ${pNL}%`;
       
+      // Update Chart
       chart.data.datasets[0].data = [valLogam || 1, valNonLogam || 1];
       chart.update();
 
+      // Sync ke Google Sheets (Debounce 1 detik agar tidak spam)
       clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
         new Image().src = `https://script.google.com/macros/s/${GOOGLE_SCRIPT_ID}/exec?barang=${valTotal}&logam=${valLogam}&nonlogam=${valNonLogam}`;
