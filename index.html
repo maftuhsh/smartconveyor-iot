@@ -73,15 +73,21 @@
       document.getElementById("mqttStatus").innerText = "ONLINE";
       document.getElementById("mqttStatus").style.color = "#22c55e";
       client.subscribe(["smartconveyor/totalbarang", "smartconveyor/logam", "smartconveyor/nonlogam"]);
-      addLog(" MQTT Terhubung ke Broker");
+      addLog("✅ MQTT Berhasil Terhubung");
     });
 
-    client.on("reconnect", () => { addLog("🔄 Mencoba menghubungkan kembali (MQTT Reconnecting)..."); });
+    client.on("reconnect", () => { 
+      document.getElementById("mqttStatus").innerText = "RECONNECTING";
+      document.getElementById("mqttStatus").style.color = "#f59e0b";
+      addLog("🔄 Mencoba menghubungkan kembali..."); 
+    });
+
     client.on("offline", () => {
       document.getElementById("statusDot").classList.remove("connected");
+      document.getElementById("statusText").innerText = "Disconnected";
       document.getElementById("mqttStatus").innerText = "OFFLINE";
       document.getElementById("mqttStatus").style.color = "#ef4444";
-      addLog(" MQTT Offline - Memeriksa koneksi...");
+      addLog("❌ MQTT Offline - Terputus dari Broker");
     });
 
     client.on("message", (topic, msg) => {
@@ -100,10 +106,10 @@
       
       clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
-        addLog("☁️ [Web Automation] Mengirim data sinkron ke Sheets...");
+        addLog("☁️ [Web Automation] Mengirim data ke Sheets...");
         fetch(`https://script.google.com/macros/s/${GOOGLE_SCRIPT_ID}/exec?barang=${valTotal}&logam=${valLogam}&nonlogam=${valNonLogam}`, { mode: 'no-cors' })
-          .then(() => addLog(" [Web Automation] Sinkronisasi Google Sheets Berhasil!"))
-          .catch(() => addLog(" [Web Automation] Sinkronisasi Google Sheets Gagal!"));
+          .then(() => addLog("✅ [Web Automation] Sinkronisasi Berhasil!"))
+          .catch(() => addLog("❌ [Web Automation] Sinkronisasi Gagal!"));
       }, 1500);
     });
 
