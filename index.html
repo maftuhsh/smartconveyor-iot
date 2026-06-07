@@ -4,14 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Conveyor Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
-    body { background: radial-gradient(circle at top right, #1e3a8a 0%,transparent 25%), radial-gradient(circle at bottom left, #0891b2 0%,transparent 25%), #0f172a; color:white; min-height:100vh; overflow-x:hidden; padding:20px; }
+    body { background: radial-gradient(circle at top right, #1e3a8a 0%,transparent 25%), radial-gradient(circle at bottom left, #0891b2 0%,transparent 25%), #0f172a; color:white; min-height:100vh; padding:20px; }
     .container { width:100%; max-width:1400px; margin:auto; }
     .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; flex-wrap:wrap; gap:20px; }
     .title h1 { font-size:2rem; font-weight:700; }
@@ -23,45 +21,34 @@
     .card { background:rgba(30,41,59,0.75); backdrop-filter:blur(14px); border-radius:24px; padding:24px; border:1px solid rgba(255,255,255,0.08); position:relative; overflow:hidden; }
     .card::before { content:""; position:absolute; top:0; left:0; width:100%; height:5px; background: linear-gradient(90deg, #06b6d4, #3b82f6); }
     .card-title { font-size:1rem; color:#94a3b8; margin-bottom:12px; font-weight:500; }
-    .card-value { font-size:2.5rem; font-weight:700; line-height:1; }
-    .card-sub { margin-top:10px; color:#94a3b8; font-size:0.95rem; }
+    .card-value { font-size:2.2rem; font-weight:700; line-height:1; }
     .big-card { background:rgba(30,41,59,0.75); border-radius:24px; padding:24px; border:1px solid rgba(255,255,255,0.08); backdrop-filter:blur(14px); margin-bottom:25px; }
-    .big-title { font-size:1.2rem; margin-bottom:20px; font-weight:600; }
     .logs { max-height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
-    .log-item { background:#0f172a; padding:14px; border-radius:14px; border-left:4px solid #38bdf8; }
+    .log-item { background:#0f172a; padding:14px; border-radius:14px; border-left:4px solid #38bdf8; animation:fadeIn 0.3s ease; }
     .log-time { font-size:0.8rem; color:#94a3b8; margin-bottom:5px; }
-    @media(max-width:768px){ .header{ flex-direction:column; align-items:flex-start; } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <div class="title">
-        <h1>Smart Conveyor Dashboard</h1>
-        <p>IoT Monitoring System • MQTT & Sheets Sync</p>
-      </div>
-      <div class="status">
-        <div class="dot" id="statusDot"></div>
-        <span id="statusText">Disconnected</span>
-      </div>
+      <div class="title"><h1>Smart Conveyor Dashboard</h1><p>IoT Monitoring System • MQTT & Sheets Sync</p></div>
+      <div class="status"><div class="dot" id="statusDot"></div><span id="statusText">Disconnected</span></div>
     </div>
-
     <div class="grid">
       <div class="card"><div class="card-title">Total Barang</div><div class="card-value" id="totalBarang">0</div></div>
       <div class="card"><div class="card-title">Logam (Qty / %)</div><div class="card-value" id="valLogam" style="color: #22c55e;">0 / 0%</div></div>
       <div class="card"><div class="card-title">Non Logam (Qty / %)</div><div class="card-value" id="valNonLogam" style="color: #f59e0b;">0 / 0%</div></div>
-      <div class="card"><div class="card-title">Last Detection</div><div class="card-value" id="lastDetect" style="font-size: 1.8rem;">-</div></div>
+      <div class="card"><div class="card-title">Last Detection</div><div class="card-value" id="lastDetect">-</div></div>
       <div class="card"><div class="card-title">System Uptime</div><div class="card-value" id="uptime">00:00:00</div></div>
       <div class="card"><div class="card-title">MQTT Status</div><div class="card-value" id="mqttStatus" style="color: #ef4444;">OFFLINE</div></div>
     </div>
-
     <div class="big-card">
-      <div class="big-title">Material Distribution</div>
+      <div style="font-size:1.2rem; font-weight:600; margin-bottom:20px;">Material Distribution</div>
       <canvas id="myChart" style="max-height: 300px;"></canvas>
     </div>
-
     <div class="big-card">
-      <div class="big-title">Realtime Activity Logs</div>
+      <div style="font-size:1.2rem; font-weight:600; margin-bottom:20px;">Realtime Activity & Cloud Synced</div>
       <div class="logs" id="logs"></div>
     </div>
   </div>
@@ -69,7 +56,6 @@
   <script>
     const GOOGLE_SCRIPT_ID = "AKfycbxcTcoVDLo5l3dCTiF5I_JVlrTYW_MNVSjfrcoZHNNKitjNtE-oBZ_miRs1KrXeb9Di";
     let valTotal = 0, valLogam = 0, valNonLogam = 0, startTime = Date.now(), syncTimeout = null;
-    
     const ctx = document.getElementById('myChart').getContext('2d');
     const chart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Logam', 'Non Logam'], datasets: [{ data: [1, 1], backgroundColor: ['#22c55e', '#f59e0b'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: 'white' } } } } });
 
@@ -79,12 +65,7 @@
       document.getElementById("uptime").innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     }, 1000);
 
-    const client = mqtt.connect("wss://589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud:8884/mqtt", { 
-        username: "smartconveyor-iot", 
-        password: "Mesinelektro123", 
-        reconnectPeriod: 2000, 
-        clientId: "dash_" + Math.random().toString(16).substr(2,8) 
-    });
+    const client = mqtt.connect("wss://589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud:8884/mqtt", { username: "smartconveyor-iot", password: "Mesinelektro123", reconnectPeriod: 2000, clientId: "dash_" + Math.random().toString(16).substr(2,8) });
 
     client.on("connect", () => {
       document.getElementById("statusDot").classList.add("connected");
@@ -112,14 +93,9 @@
       
       clearTimeout(syncTimeout);
       syncTimeout = setTimeout(() => {
+        addLog("☁️ Syncing to Google Sheets...");
         new Image().src = `https://script.google.com/macros/s/${GOOGLE_SCRIPT_ID}/exec?barang=${valTotal}&logam=${valLogam}&nonlogam=${valNonLogam}`;
       }, 1500);
-    });
-
-    client.on("offline", () => {
-        document.getElementById("statusDot").classList.remove("connected");
-        document.getElementById("mqttStatus").innerText = "OFFLINE";
-        document.getElementById("mqttStatus").style.color = "#ef4444";
     });
 
     function addLog(text) {
