@@ -4,28 +4,24 @@
 #include <PubSubClient.h>
 #include <ESP32Servo.h> 
 
-// ======================================================
+
 // WIFI CONFIG
-// ======================================================
 const char* ssid = "esp32cam";
 const char* password = "00000000";
 
-// ======================================================
+
 // MQTT CONFIG
-// ======================================================
 const char* mqtt_server = "589230614b1342099527d504f560a5ef.s1.eu.hivemq.cloud";
 const char* mqtt_user = "smartconveyor-iot";
 const char* mqtt_password = "Mesinelektro123";
 
-// ======================================================
+
 // MQTT CLIENT
-// ======================================================
 WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
-// ======================================================
+
 // SERVO 360 CONFIG
-// ======================================================
 Servo pusherServo;
 const int servoPin = 25; 
 
@@ -40,15 +36,12 @@ unsigned long waktuPemicuServo = 0;
 bool servoHarusMaju = false;
 bool servoHarusMundur = false;
 
-// ======================================================
+
 // SENSOR PIN
-// ======================================================
 const int Photoelectric = 27;
 const int inductiveSensor = 26;
 
-// ======================================================
 // VARIABLE 
-// ======================================================
 bool lastPhotoState = HIGH;
 
 int totalBarang = 0;
@@ -64,16 +57,14 @@ bool sedangMendeteksiLogam = false;
 unsigned long waktuCekWiFi = 0;
 const unsigned long jedaCekWiFi = 10000; 
 
-// ======================================================
+
 // FUNCTION DECLARATION
-// ======================================================
 void HandleWiFiDanMQTT();
 void ReadSensors();
 void HandleServoPusher(); 
 
-// ======================================================
+
 // SETUP
-// ======================================================
 void setup() {
   Serial.begin(115200);
 
@@ -98,18 +89,16 @@ void setup() {
   Serial.println("=================================");
 }
 
-// ======================================================
+
 // LOOP
-// ======================================================
 void loop() {
   HandleWiFiDanMQTT();
   ReadSensors();
   HandleServoPusher(); 
 }
 
-// ======================================================
+
 // MANAGEMENT KONEKSI (NON-BLOCKING)
-// ======================================================
 void HandleWiFiDanMQTT() {
   if (millis() - waktuCekWiFi >= jedaCekWiFi) {
     waktuCekWiFi = millis();
@@ -130,9 +119,8 @@ void HandleWiFiDanMQTT() {
   }
 }
 
-// ======================================================
-// SENSOR MONITORING (PERBAIKAN MQTT PUBLISH)
-// ======================================================
+
+// SENSOR MONITORING 
 void ReadSensors() {
   bool currentPhotoState = digitalRead(Photoelectric);
   bool currentInductiveState = digitalRead(inductiveSensor);
@@ -185,9 +173,8 @@ void ReadSensors() {
   }
 }
 
-// ======================================================
+
 // FUNGSI KENDALI AKTUATOR SERVO 360
-// ======================================================
 void HandleServoPusher() {
   if (servoHarusMaju && (millis() - waktuPemicuServo >= 1200)) {
     pusherServo.write(speedMaju); 
